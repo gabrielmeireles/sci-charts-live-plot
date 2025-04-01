@@ -1,62 +1,144 @@
 import { useEffect, useRef, useState } from 'react';
-import { SciChartSurface, NumericAxis, FastLineRenderableSeries, XyDataSeries } from 'scichart';
+import {
+  SciChartSurface,
+  FastLineRenderableSeries,
+  XyDataSeries,
+  TSurfaceDefinition,
+  EThemeProviderType,
+  EChart2DModifierType,
+  ESciChartSurfaceType,
+  EAxisType,
+} from 'scichart';
+import { SciChartReact } from 'scichart-react';
 
 const SERIES_COLORS: string[] = ['#FF6600', '#00AAFF', '#AA00FF', '#FFAA00', '#00FFAA'];
+const MAX_AMOUNT_DATASETS = SERIES_COLORS.length;
+const INITIAL_DATASETS_AMOUNT = 0;
+const CHART_UPDATE_RATE_MS = 50;
 
 const SciChartRealTime = () => {
-  const [numSeries, setNumSeries] = useState<number>(1);
-  const [chart, setChart] = useState<SciChartSurface | null>(null);
-  const seriesRef = useRef<XyDataSeries[]>([]);
-  const intervalRef = useRef<any>(null);
+  const [amountDatasets, setAmountDatasets] = useState<number>(INITIAL_DATASETS_AMOUNT);
+  const [chart, setChart] = useState<SciChartSurface | null>(null!);
+  const datasets = useRef<XyDataSeries[]>([]);
 
-  const getWasmContext = async () => {
-    const { sciChartSurface, wasmContext } = await SciChartSurface.create('chart-container');
-    sciChartSurface.xAxes.add(new NumericAxis(wasmContext));
-    sciChartSurface.yAxes.add(new NumericAxis(wasmContext));
-    setChart(sciChartSurface);
-
-    return wasmContext;
+  const chartConfig: TSurfaceDefinition = {
+    type: ESciChartSurfaceType.Default2D,
+    options: {
+      surface: {
+        theme: { type: EThemeProviderType.Dark },
+        title: 'Real Time Chart',
+        titleStyle: {
+          fontSize: 20,
+        },
+      },
+      modifiers: [
+        { type: EChart2DModifierType.MouseWheelZoom },
+        {
+          type: EChart2DModifierType.ZoomPan,
+          options: { enableZoom: true },
+        },
+        { type: EChart2DModifierType.ZoomExtents },
+      ],
+      yAxes: {
+        type: EAxisType.NumericAxis,
+      },
+      xAxes: {
+        type: EAxisType.NumericAxis,
+      },
+      onCreated: async (sciChartSurface: SciChartSurface) => {
+        setChart(sciChartSurface);
+      },
+    },
   };
 
   useEffect(() => {
-    getWasmContext();
-    return () => chart?.delete();
-  }, []);
-
-  useEffect(() => {
-    if (!chart) return;
-    chart.renderableSeries.clear();
-    seriesRef.current = [];
-
-    for (let i = 0; i < numSeries; i++) {
-      const dataSeries = new XyDataSeries(chart.webAssemblyContext2D);
-      const lineSeries = new FastLineRenderableSeries(chart.webAssemblyContext2D, {
-        dataSeries,
-        stroke: SERIES_COLORS[i % SERIES_COLORS.length],
-      });
-      chart.renderableSeries.add(lineSeries);
-      seriesRef.current.push(dataSeries);
-    }
-  }, [numSeries, chart]);
-
-  useEffect(() => {
-    if (!chart) return;
-    intervalRef.current = setInterval(() => {
-      const now = Date.now();
-      seriesRef.current.forEach((series) => {
-        series.append(now, Math.random() * 2 - 1);
-        if (series.count() > 2000) series.removeRange(0, 10);
-      });
-    }, 50);
-    return () => intervalRef.current && clearInterval(intervalRef.current);
+    const intervalRef = setInterval(() => {
+      onAddSeriesData();
+    }, CHART_UPDATE_RATE_MS);
+    return () => clearInterval(intervalRef);
   }, [chart]);
 
+  const onClearSeries = () => {
+    console.log('clearSeries');
+
+    if (!chart) return;
+
+    setAmountDatasets(0);
+    chart.renderableSeries.clear();
+    datasets.current = [];
+  };
+
+  const onAddSeriesData = () => {
+    console.log('onAddSeriesData');
+
+    if (!chart) return;
+
+    const now = Date.now();
+    datasets.current.forEach((dataset, idx) => {
+      dataset.append(now, Math.sin(now / 1000) + idx);
+      if (dataset.count() > 2000) dataset.removeRange(0, 10);
+    });
+
+    chart.invalidateElement();
+    chart.zoomExtents();
+  };
+
+  const onSetAmountDatasets = (amount: number) => {
+    const newAmount = Math.min(Math.max(1, amount), MAX_AMOUNT_DATASETS);
+    if (newAmount === amountDatasets) return;
+
+    console.log(`Updating datasets amount from ${amountDatasets} to ${newAmount}`);
+
+    onUpdateDatasetsAmount(amountDatasets, newAmount);
+    setAmountDatasets(newAmount);
+  };
+
+  const onUpdateDatasetsAmount = (oldAmount: number, newAmount: number) => {
+    const increased = newAmount > oldAmount;
+
+    if (increased) {
+      const indexesToCreate = new Array(newAmount - oldAmount)
+        .fill(0)
+        .map((_, idx) => idx + oldAmount);
+      indexesToCreate.forEach(createDataSeries);
+      return;
+    }
+
+    const indexesToRemove = new Array(oldAmount - newAmount)
+      .fill(0)
+      .map((_, idx) => idx + newAmount);
+    indexesToRemove.forEach(removeDataSeries);
+  };
+
+  const createDataSeries = (index: number) => {
+    if (!chart) return;
+
+    const dataSeries = new XyDataSeries(chart.webAssemblyContext2D, {
+      dataSeriesName: `Dataset ${index}`,
+    });
+    const lineSeries = new FastLineRenderableSeries(chart.webAssemblyContext2D, {
+      dataSeries,
+      stroke: SERIES_COLORS[index % SERIES_COLORS.length],
+    });
+    chart.renderableSeries.add(lineSeries);
+    datasets.current.push(dataSeries);
+  };
+
+  const removeDataSeries = (index: number) => {
+    if (!chart) return;
+
+    chart.renderableSeries.removeAt(index);
+    datasets.current.splice(index, 1);
+  };
+
   return (
-    <div>
-      <div id="chart-container" style={{ width: '600px', height: '400px' }}></div>
-      <button onClick={() => seriesRef.current.forEach((s) => s.clear())}>Clear Data</button>
-      <button onClick={() => setNumSeries((prev) => Math.max(1, prev - 1))}>-</button>
-      <button onClick={() => setNumSeries((prev) => prev + 1)}>+</button>
+    <div className="flex flex-col gap-2">
+      <SciChartReact style={{ width: 600, height: 400 }} config={chartConfig} />
+      <div className="gap-2 flex justify-center">
+        <button onClick={() => onClearSeries()}>Clear Data</button>
+        <button onClick={() => onSetAmountDatasets(amountDatasets - 1)}>-</button>
+        <button onClick={() => onSetAmountDatasets(amountDatasets + 1)}>+</button>
+      </div>
     </div>
   );
 };

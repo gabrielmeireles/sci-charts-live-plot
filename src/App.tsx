@@ -7,15 +7,11 @@ function App() {
   SciChartSurface.UseCommunityLicense();
 
   return (
-    <>
-      <div className="card">
-        <LineChart />
-      </div>
-      <div className="card">
-        <SciChartRealTime />
-      </div>
+    <main className="bg-gray-600 items-center flex flex-col min-h-screen justify-between p-8">
+      <LineChart />
+      <SciChartRealTime />
       <p className="this-is-me">Hope you like it</p>
-    </>
+    </main>
   );
 }
 

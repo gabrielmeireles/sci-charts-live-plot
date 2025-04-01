@@ -1,10 +1,10 @@
-import { SciChartReact } from "scichart-react";
-import { ESeriesType, EThemeProviderType, TSurfaceDefinition } from "scichart";
+import { SciChartReact } from 'scichart-react';
+import { ESeriesType, EThemeProviderType, TSurfaceDefinition } from 'scichart';
 
 const chartConfig: TSurfaceDefinition = {
   surface: {
     theme: { type: EThemeProviderType.Dark },
-    title: "Basic Chart via Config",
+    title: 'Basic Static Chart Example',
     titleStyle: {
       fontSize: 20,
     },
@@ -13,13 +13,13 @@ const chartConfig: TSurfaceDefinition = {
     type: ESeriesType.SplineMountainSeries,
     options: {
       strokeThickness: 4,
-      stroke: "#216939",
+      stroke: '#216939',
       fillLinearGradient: {
         startPoint: { x: 0, y: 0 },
         endPoint: { x: 1, y: 1 },
         gradientStops: [
-          { offset: 0.3, color: "#2d2169" },
-          { offset: 1, color: "transparent" },
+          { offset: 0.3, color: '#2d2169' },
+          { offset: 1, color: 'transparent' },
         ],
       },
     },
@@ -28,7 +28,7 @@ const chartConfig: TSurfaceDefinition = {
 };
 
 const LineChart = () => {
-  return <SciChartReact style={{ width: 400, height: 300 }} config={chartConfig} />
+  return <SciChartReact style={{ width: 400, height: 300 }} config={chartConfig} />;
 };
 
 export default LineChart;
