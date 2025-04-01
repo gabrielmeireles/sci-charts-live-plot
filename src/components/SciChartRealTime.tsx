@@ -43,7 +43,7 @@ const SciChartRealTime = () => {
         type: EAxisType.NumericAxis,
       },
       xAxes: {
-        type: EAxisType.NumericAxis,
+        type: EAxisType.DateTimeNumericAxis,
       },
       onCreated: async (sciChartSurface: SciChartSurface) => {
         setChart(sciChartSurface);
@@ -56,7 +56,7 @@ const SciChartRealTime = () => {
       onAddSeriesData();
     }, CHART_UPDATE_RATE_MS);
     return () => clearInterval(intervalRef);
-  }, [chart]);
+  }, [chart, datasets.current.length]);
 
   const onClearSeries = () => {
     console.log('clearSeries');
@@ -71,7 +71,7 @@ const SciChartRealTime = () => {
   const onAddSeriesData = () => {
     console.log('onAddSeriesData');
 
-    if (!chart) return;
+    if (!chart || datasets.current.length === 0) return;
 
     const now = Date.now();
     datasets.current.forEach((dataset, idx) => {
